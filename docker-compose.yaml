@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  dynamodb-local:
+    #TODO pin this
+    image: "amazon/dynamodb-local:latest"
+    container_name: app-dynamodb-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./docker/dynamodb:/home/dynamodblocal/data"
+    working_dir: /home/dynamodblocal
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+
+  dynamodb-admin:
+    #TODO pin these
+    image: aaronshaf/dynamodb-admin:latest
+    container_name: app-dynamodb_admin
+    ports:
+      - "8001:8001"
+    environment:
+      - DYNAMO_ENDPOINT=http://dynamodb-local:8000
+    depends_on:
+      - dynamodb-local
+    restart: unless-stopped
