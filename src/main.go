@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 
@@ -11,8 +12,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
-// Recursive attribuite builder
-func buildAttributeValue(value interface{}) *dynamodb.AttributeValue {
+// Recursive attribuite builder for getting the JSON into the correct schema
+// with attributes for seeding into dynamoDB
+func buildAttributeValues(value interface{}) *dynamodb.AttributeValue {
 	attributeValue := &dynamodb.AttributeValue{}
 
 	switch v := value.(type) {
@@ -27,13 +29,13 @@ func buildAttributeValue(value interface{}) *dynamodb.AttributeValue {
 	case []interface{}:
 		l := make([]*dynamodb.AttributeValue, len(v))
 		for i, item := range v {
-			l[i] = buildAttributeValue(item)
+			l[i] = buildAttributeValues(item)
 		}
 		attributeValue.L = l
 	case map[string]interface{}:
 		m := make(map[string]*dynamodb.AttributeValue)
 		for k, item := range v {
-			m[k] = buildAttributeValue(item)
+			m[k] = buildAttributeValues(item)
 		}
 		attributeValue.M = m
 	default:
@@ -44,17 +46,19 @@ func buildAttributeValue(value interface{}) *dynamodb.AttributeValue {
 }
 
 func main() {
-	// TODO take these is as args
-	host := "http://localhost:8000"
-	tableName := "TestSingleTable"
+	// TODO take this in as an arg
 	filePath := "./fixtures/tours.json"
+	// Flags
+	host := flag.String("h", "http://localhost:8000", "DyanamoDB host to target")
+	tableName := flag.String("n", "TestSingleTable", "Table name. Will create if doesn't exist")
+	flag.Parse()
 
 	// Create a new DynamoDB session
 	session, err := session.NewSession(&aws.Config{
 		Region:   aws.String("ap-southeast-2"), // Replace with your desired region
-		Endpoint: aws.String(host),             // Replace with the URL of your DynamoDB Local instance
-
+		Endpoint: aws.String(*host),            // Replace with the URL of your DynamoDB Local instance
 	})
+
 	if err != nil {
 		fmt.Printf("Failed to create session: %v\n", err)
 		return
@@ -144,17 +148,17 @@ func main() {
 	// Check if the table already exists
 	// Call the DescribeTable API to check if the table exists
 	_, err = dbClient.DescribeTable(&dynamodb.DescribeTableInput{
-		TableName: aws.String(tableName),
+		TableName: aws.String(*tableName),
 	})
 
 	if err != nil {
 		// Check if the error is a ResourceNotFoundException
 		if aerr, ok := err.(awserr.Error); ok && aerr.Code() == dynamodb.ErrCodeResourceNotFoundException {
-			fmt.Printf("Table '%s' does not exist\n, creating...", tableName)
+			fmt.Printf("Table with name '%s' does not exist. Creating...\n", *tableName)
 
 			// Create the createInput for the CreateTable API call
 			createInput := &dynamodb.CreateTableInput{
-				TableName:             aws.String(tableName),
+				TableName:             aws.String(*tableName),
 				AttributeDefinitions:  attributeDefinitions,
 				KeySchema:             keySchema,
 				ProvisionedThroughput: provisionedThroughput,
@@ -167,7 +171,7 @@ func main() {
 			// Create the table in DynamoDB
 			_, err = dbClient.CreateTable(createInput)
 			if err != nil {
-				fmt.Printf("Failed to create table: %v\n", err)
+				fmt.Printf("Failed to create table %v\n", err)
 				return
 			} else {
 				fmt.Println("Table creation request submitted!")
@@ -175,7 +179,7 @@ func main() {
 
 			// Wait for the table to be created
 			err = dbClient.WaitUntilTableExists(&dynamodb.DescribeTableInput{
-				TableName: aws.String(tableName),
+				TableName: aws.String(*tableName),
 			})
 			if err != nil {
 				fmt.Printf("Failed to wait for table creation: %v\n", err)
@@ -184,10 +188,10 @@ func main() {
 				fmt.Println("Table created successfully!")
 			}
 		} else {
-			fmt.Printf("Error describing table: %v\n", err)
+			fmt.Printf("Error describing table %v\n", err)
 		}
 	} else {
-		fmt.Printf("Table %v found!\n", tableName)
+		fmt.Printf("Table with name '%s' fonund.\n", *tableName)
 
 	}
 
@@ -207,14 +211,14 @@ func main() {
 	item := make(map[string]*dynamodb.AttributeValue)
 	for _, itemData := range itemMap {
 		for key, value := range itemData {
-			attributeValue := buildAttributeValue(value)
+			attributeValue := buildAttributeValues(value)
 			item[key] = attributeValue
 		}
 	}
 
 	// TODO I think this will do a blind rewrite, might need a flag to control this
 	putInput := &dynamodb.PutItemInput{
-		TableName: aws.String(tableName), // Replace with your table name
+		TableName: aws.String(*tableName), // Replace with your table name
 		Item:      item,
 	}
 
