@@ -8,7 +8,7 @@ Tool to seed a dynamodb database. Currently working locally with dynamodb-local.
 
 ## TODO
 - [ ] Takes Optional Args
-    - [x] Table Name `-n`
+    - [x] Table Name `-t`
     - [x] Endpoint `-e`
     - [ ] Table Schema `-s`
     - [ ] Seed Data JSON file `-f`

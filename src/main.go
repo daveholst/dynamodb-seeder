@@ -50,7 +50,7 @@ func main() {
 	filePath := "./fixtures/tours.json"
 	// Flags
 	host := flag.String("h", "http://localhost:8000", "DyanamoDB host to target")
-	tableName := flag.String("n", "TestSingleTable", "Table name. Will create if doesn't exist")
+	tableName := flag.String("t", "TestSingleTable", "Table name. Will create if doesn't exist")
 	flag.Parse()
 
 	// Create a new DynamoDB session
@@ -191,7 +191,7 @@ func main() {
 			fmt.Printf("Error describing table %v\n", err)
 		}
 	} else {
-		fmt.Printf("Table with name '%s' fonund.\n", *tableName)
+		fmt.Printf("Table with name '%s' found.\n", *tableName)
 
 	}
 

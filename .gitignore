@@ -25,3 +25,6 @@ go.work
 
 #Docker
 docker/
+
+#Built binary 
+dynamodb-seeder
